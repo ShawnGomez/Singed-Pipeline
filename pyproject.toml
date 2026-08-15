@@ -13,6 +13,7 @@ dependencies = [
     "langchain-postgres>=0.0.17",
     "langchain-text-splitters>=1.1.2",
     "psycopg>=3.3.4",
+    "python-dotenv>=1.2.2",
 ]
 
 [tool.pyright]
