@@ -1,13 +1,23 @@
 [project]
 name = "singed-pipeline"
 version = "0.1.0"
-description = "Add your description here"
+description = "The RAG Pipeline for Singed with Pgvector"
 readme = "README.md"
 authors = [
     { name = "Shawn", email = "shawnmgomez@outlook.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "langchain-core>=1.5.4",
+    "langchain-openai>=1.5.1",
+    "langchain-postgres>=0.0.17",
+    "langchain-text-splitters>=1.1.2",
+    "psycopg>=3.3.4",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 
 [project.scripts]
 singed-pipeline = "singed_pipeline:main"
