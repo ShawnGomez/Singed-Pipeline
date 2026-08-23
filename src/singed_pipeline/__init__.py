@@ -10,7 +10,6 @@ embeddings = OpenAIEmbeddings(
         model = "text-embedding-3-small"
 )
 
-connection = os.environ["DATABASE_URL"]
 POSTGRES_URL = os.environ["DATABASE_URL"]
 PGVECTOR_URL = os.environ["PGVECTOR_URL"]
 
@@ -19,7 +18,7 @@ collection_name = "docs"
 vector_store = PGVector(
     embeddings = embeddings,
     collection_name = collection_name,
-    connection = connection,
+    connection = PGVECTOR_URL,
     use_jsonb = True,
 )
 
@@ -69,7 +68,7 @@ def load_section(section_id: str) -> dict:
             WHERE s.id = %s
     """
 
-    with psycopg.connect(connection) as conn:
+    with psycopg.connect(POSTGRES_URL) as conn:
         with conn.cursor() as cursor:
             cursor.execute(query, (section_id,))
             row = cursor.fetchone()
