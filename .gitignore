@@ -8,6 +8,8 @@ wheels/
 
 #Env
 .env
+.env.*
+!.env.example
 
 # Virtual environments
 .venv
