@@ -49,8 +49,9 @@ jobs:
             ${{ vars.LIGHTSAIL_USER }}@${{ vars.LIGHTSAIL_HOST }}:/opt/singed/pipeline/
       
       - name: Install Production dependencies
-        run: ssh -i ~/.ssh/singed_deploy \
+        run: |
+          ssh -i ~/.ssh/singed_deploy \
             ${{ vars.LIGHTSAIL_USER }}@${{ vars.LIGHTSAIL_HOST }} << 'EOF'
               cd /opt/singed/pipeline
               uv sync --frozen
-          EOF
+          EOF 
