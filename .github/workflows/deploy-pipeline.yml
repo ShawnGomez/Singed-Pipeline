@@ -1,0 +1,56 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@uv10
+        with:
+          enable-cache: true 
+
+      - name: Install Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Test
+        run: uv run pytest  
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LIGHTSAIL_SSH_KEY }}" > ~/.ssh/singed_deploy
+          chmod 600 ~/.ssh/singed_deploy
+          ssh-keyscan -H "${{ vars.LIGHTSAIL_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload Pipeline
+        run: |
+           rsync -avz --delete \
+            --exclude '.git' \
+            --exclude '.venv' \
+            --exclude '.env' \
+            --exclude '__pycache__' \
+            -e "ssh -i ~/.ssh/singed_deploy" \
+            ./ \
+            ${{ vars.LIGHTSAIL_USER }}@${{ vars.LIGHTSAIL_HOST }}:/opt/singed/pipeline/
+      
+      - name: Install Production dependencies
+        run: ssh -i ~/.ssh/singed_deploy \
+            ${{ vars.LIGHTSAIL_USER }}@${{ vars.LIGHTSAIL_HOST }} << 'EOF'
+              cd /opt/singed/pipeline
+              uv sync --frozen
+          EOF
