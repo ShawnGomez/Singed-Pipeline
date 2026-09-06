@@ -52,4 +52,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/singed_deploy \
             ${{ vars.LIGHTSAIL_USER }}@${{ vars.LIGHTSAIL_HOST }} \
-            "cd /opt/singed/pipeline && uv sync --frozen"
+            "cd /opt/singed/pipeline && /home/ubuntu/.local/bin/uv sync --frozen"
