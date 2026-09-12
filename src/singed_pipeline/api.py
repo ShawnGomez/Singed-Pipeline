@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from singed_pipeline.rag import answer_question
 
 app = FastAPI()
 
@@ -18,6 +19,5 @@ class QueryResponse(BaseModel):
     sources: list[Source]
 
 @app.post("/rag/query", response_model=QueryResponse)
-def query(request: QueryRequest) -> QueryResponse:
-    # make it return void then change it to this for the real build: return answer_question(request.message)
-    return QueryResponse(answer="Connected from pipeline $\ket{\psi}$ = $\\alpha \ket{0}$ + $\\beta \ket{1}$", sources=[])
+def query(request: QueryRequest):
+    return answer_question(request.message)
