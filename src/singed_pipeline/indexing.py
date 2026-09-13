@@ -44,6 +44,17 @@ headers_to_split_on = [
 def make_chunk_id(section_id: str, chunk_index: int) -> str:
     return f"{section_id}:{chunk_index}"
 
+def clear_section(section_id: str) -> None:
+    try:
+        vector_store.delete(filter = {"section_id": section_id})
+    except TypeError:
+        with psycopg.connect(PGVECTOR_URL) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM langchain_pg_embedding "
+                    "WHERE cmetadata->> 'section_id' = %s",
+                    (section_id,),
+                )
 
 def index_section (section_id:str)-> None:
    section = load_section(section_id)
@@ -54,6 +65,7 @@ def index_section (section_id:str)-> None:
         for index in range (len(chunks))
     ]
 
+   clear_section(section["id"])
    vector_store.add_documents(documents = chunks, ids = chunk_ids)
 
    print(f"Index {len(chunks)} chunks"

@@ -10,6 +10,7 @@ class QueryRequest(BaseModel):
 
 
 class Source(BaseModel):
+    label: str
     document_slug: str
     section_slug: str
     title: str | None = None
