@@ -1,5 +1,6 @@
 import os
 import psycopg
+import hashlib
 
 from dotenv import load_dotenv
 
@@ -17,11 +18,10 @@ embeddings = OpenAIEmbeddings(
 POSTGRES_URL = os.environ["DATABASE_URL"]
 PGVECTOR_URL = os.environ["PGVECTOR_URL"]
 
-collection_name = "docs"
 
 vector_store = PGVector(
     embeddings = embeddings,
-    collection_name = collection_name,
+    collection_name = "docs",
     connection = PGVECTOR_URL,
     use_jsonb = True,
 )
@@ -29,42 +29,48 @@ vector_store = PGVector(
 recursive_splitter = RecursiveCharacterTextSplitter(
     chunk_size = 1000,
     chunk_overlap = 150,
+    separators = ["\n\n", "\n", ".", " ", ""],
 )
 
 markdown_splitter = MarkdownHeaderTextSplitter(
 headers_to_split_on = [
+    ("#", "heading"),
     ("##", "subsection"),
     ("###", "subsubsection"),
 ],
     strip_headers = False,
 )
 
+def make_chunk_id(section_id: str, chunk_index: int) -> str:
+    return f"{section_id}:{chunk_index}"
+
+
 def index_section (section_id:str)-> None:
    section = load_section(section_id)
-
    chunks = create_chunks(section)
 
-   for chunk in chunks:
-        print("=" * 60)
-        print(chunk.page_content)
-        print(chunk.metadata)
+   chunk_ids = [
+        make_chunk_id(section["id"], index)
+        for index in range (len(chunks))
+    ]
 
-   vector_store.add_documents(chunks)
+   vector_store.add_documents(documents = chunks, ids = chunk_ids)
 
    print(f"Index {len(chunks)} chunks"
          f"from {section['document_slug']}/ {section['slug']}")
 
 
 def load_section(section_id: str) -> dict:
-    query = """SELECT
-                s.id AS section_id,
-                s.slug AS section_slug,
-                s.title AS section_title,
+    query = """
+        SELECT
+                s.id,
+                s.slug,
+                s.title,
                 s.markdown_content,
 
-                d.id AS document_id,
-                d.slug AS document_slug,
-                d.title AS document_title
+                d.id,
+                d.slug,
+                d.title
             
             FROM document_sections s
             JOIN documents d
@@ -102,19 +108,54 @@ def create_chunks(section: dict) -> list[Document]:
             heading_chunks
     )
 
-    for index, chunk in enumerate(chunks):
-        chunk.metadata.update(
-            {
-                    "document_id" :section["document_id"],
+    indexed_chunks: list[Document] = []
+
+    for chunk_index, chunk in enumerate(chunks):
+
+        headings = [
+            chunk.metadata.get("heading"),
+            chunk.metadata.get("subsection"),
+            chunk.metadata.get("subsubsection"),
+        ]
+
+        heading_path = " > ".join(
+            heading for heading in headings if heading
+        )
+
+        prefix_parts = [
+            f"Document: {section['document_title']}",
+            f"Section: {section['title'] or section['slug']}",
+        ]
+
+        if heading_path:
+            prefix_parts.append(f"Heading: {heading_path}")
+
+        searchable_content = (
+            "\n".join(prefix_parts)
+            + "\n\n"
+            + chunk.page_content.strip()
+        )
+
+        content_hash = hashlib.sha256(
+            searchable_content.encode("utf-8")
+        ).hexdigest()
+
+        indexed_chunks.append(
+            Document(
+                page_content=searchable_content,
+                metadata={
+                    **chunk.metadata,
+                    "document_id": section["document_id"],
                     "document_slug": section["document_slug"],
                     "document_title": section["document_title"],
-
-                    "section_id": section ["id"],
+                    "section_id": section["id"],
                     "section_slug": section["slug"],
                     "section_title": section["title"],
-
-                    "chunk_index": index,
-            }
+                    "chunk_index": chunk_index,
+                    "content_hash": content_hash,
+                },
+            )
         )
-    return chunks
+
+    return indexed_chunks
             
