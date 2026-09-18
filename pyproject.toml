@@ -7,7 +7,7 @@ authors = [
     { name = "Shawn", email = "shawnmgomez@outlook.com" }
 ]
 requires-python = ">=3.14"
-dependencies = [    
+dependencies = [
     "pytest>=9.0.0",
     "fastapi>=0.141.1",
     "langchain-core>=1.5.4",
@@ -17,6 +17,7 @@ dependencies = [
     "psycopg>=3.3.4",
     "python-dotenv>=1.2.2",
     "uvicorn>=0.52.4",
+    "langgraph>=1.2.11",
 ]
 
 [tool.pyright]

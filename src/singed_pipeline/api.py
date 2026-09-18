@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from singed_pipeline.rag import answer_question
+from singed_pipeline.agent.graph import rag_graph
 
 app = FastAPI()
 
@@ -21,6 +21,16 @@ class QueryResponse(BaseModel):
 
 @app.post("/rag/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
-    result = answer_question(question = request.message, document_slug = request.document_slug,)
+    result = rag_graph.invoke({
+        "question": request.message,
+        "document_slug": request.document_slug,
+        "search_query": request.message,
+        "attempts": 0,
+    })
+
+    answer = result.get("answer")
+    if answer is None:
+        raise RuntimeError("The RAG graph finished without producing an answer.")
+
 
     return QueryResponse.model_validate(result)

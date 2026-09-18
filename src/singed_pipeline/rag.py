@@ -1,14 +1,8 @@
-from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
-from singed_pipeline.indexing import vector_store
-from dataclasses import dataclass
+from singed_pipeline.indexing import get_vector_store
 from collections import OrderedDict
 
-@dataclass
-class RetrievedDocument:
-    document : Document
-    relevance: float
-
+from singed_pipeline.models import RetrievedDocument
 MIN_RELEVANCE = 0.55
 
 llm = ChatOpenAI(
@@ -25,7 +19,7 @@ def retrieve_documents(question: str, document_slug: str | None = None ) -> list
             "document_slug":document_slug
         }
 
-    results = vector_store.similarity_search_with_relevance_scores(
+    results = get_vector_store().similarity_search_with_relevance_scores(
         query=question,
         k=8,
         filter = metadata_filter

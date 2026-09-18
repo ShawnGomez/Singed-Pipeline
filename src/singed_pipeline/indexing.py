@@ -1,6 +1,7 @@
 import os
 import psycopg
 import hashlib
+from functools import lru_cache
 
 from dotenv import load_dotenv
 
@@ -11,25 +12,26 @@ from langchain_text_splitters import (MarkdownHeaderTextSplitter, RecursiveChara
 
 load_dotenv()
 
-embeddings = OpenAIEmbeddings(
-        model = "text-embedding-3-small"
-)
-
 POSTGRES_URL = os.environ["DATABASE_URL"]
 PGVECTOR_URL = os.environ["PGVECTOR_URL"]
 
+COLLECTION_NAME = "docs"
 
-vector_store = PGVector(
-    embeddings = embeddings,
-    collection_name = "docs",
-    connection = PGVECTOR_URL,
-    use_jsonb = True,
-)
+@lru_cache(maxsize=1)
+def get_vector_store() -> PGVector:
+    """Create the database-backed vector store only when it is first used."""
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    return PGVector(
+        embeddings=embeddings,
+        collection_name=COLLECTION_NAME,
+        connection=PGVECTOR_URL,
+        use_jsonb=True,
+    )
 
 recursive_splitter = RecursiveCharacterTextSplitter(
     chunk_size = 1000,
     chunk_overlap = 150,
-    separators = ["\n\n", "\n", ".", " ", ""],
+    separators = ["\n\n", "\n", ". ", " ", ""],
 )
 
 markdown_splitter = MarkdownHeaderTextSplitter(
@@ -44,17 +46,28 @@ headers_to_split_on = [
 def make_chunk_id(section_id: str, chunk_index: int) -> str:
     return f"{section_id}:{chunk_index}"
 
-def clear_section(section_id: str) -> None:
-    try:
-        vector_store.delete(filter = {"section_id": section_id})
-    except TypeError:
-        with psycopg.connect(PGVECTOR_URL) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "DELETE FROM langchain_pg_embedding "
-                    "WHERE cmetadata->> 'section_id' = %s",
-                    (section_id,),
-                )
+def clear_section(section_id: str) -> int:
+    query = """
+        DELETE FROM langchain_pg_embedding AS embedding
+        USING langchain_pg_collection AS collection
+        WHERE embedding.collection_id = collection.uuid
+          AND collection.name = %s
+          AND embedding.cmetadata->>'section_id' = %s
+    """
+
+    with psycopg.connect(POSTGRES_URL) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                query,
+                (
+                    COLLECTION_NAME,
+                    section_id,
+                ),
+            )
+
+            deleted_count = cursor.rowcount
+
+    return deleted_count
 
 def index_section (section_id:str)-> None:
    section = load_section(section_id)
@@ -65,11 +78,18 @@ def index_section (section_id:str)-> None:
         for index in range (len(chunks))
     ]
 
-   clear_section(section["id"])
-   vector_store.add_documents(documents = chunks, ids = chunk_ids)
 
-   print(f"Index {len(chunks)} chunks"
+   deleted_count = clear_section(section["id"])
+
+   get_vector_store().add_documents(
+        documents=chunks,
+        ids = chunk_ids,
+    )  
+
+   print(f"Deleted {deleted_count} old chunks and indexed"
+       f"{len(chunks)} chunks"
          f"from {section['document_slug']}/ {section['slug']}")
+
 
 
 def load_section(section_id: str) -> dict:
@@ -170,4 +190,3 @@ def create_chunks(section: dict) -> list[Document]:
         )
 
     return indexed_chunks
-            
