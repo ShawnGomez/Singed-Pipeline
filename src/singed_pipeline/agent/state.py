@@ -1,5 +1,6 @@
 from typing import TypedDict, NotRequired
-from singed_pipeline.models import RetrievedDocument, SourceData 
+from singed_pipeline.models import RetrievedDocument, SourceData
+
 
 class AgentState(TypedDict):
     question: str

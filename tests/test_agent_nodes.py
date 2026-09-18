@@ -45,17 +45,21 @@ def test_answer_node_labels_deduplicated_sources(monkeypatch):
 
     monkeypatch.setattr(nodes, "llm", FakeLlm())
 
-    result = nodes.answer_node({
-        "question": "How?",
-        "retrieved": [
-            make_retrieved("guide", "setup"),
-            make_retrieved("guide", "setup"),
-        ],
-    })
+    result = nodes.answer_node(
+        {
+            "question": "How?",
+            "retrieved": [
+                make_retrieved("guide", "setup"),
+                make_retrieved("guide", "setup"),
+            ],
+        }
+    )
 
-    assert result["sources"] == [{
-        "label": "S1",
-        "document_slug": "guide",
-        "section_slug": "setup",
-        "title": "Setup",
-    }]
+    assert result["sources"] == [
+        {
+            "label": "S1",
+            "document_slug": "guide",
+            "section_slug": "setup",
+            "title": "Setup",
+        }
+    ]

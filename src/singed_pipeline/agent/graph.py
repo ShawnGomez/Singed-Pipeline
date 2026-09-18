@@ -1,7 +1,7 @@
-from langgraph.graph import END,START, StateGraph
+from langgraph.graph import END, START, StateGraph
 
 from singed_pipeline.agent.nodes import (
-    answer_node, 
+    answer_node,
     grade_evidence_node,
     refuse_node,
     retrieve_node,

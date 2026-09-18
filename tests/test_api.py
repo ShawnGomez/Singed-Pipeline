@@ -8,12 +8,14 @@ def test_query_invokes_graph_and_validates_response(monkeypatch):
         captured.update(state)
         return {
             "answer": "Documented answer. [S1]",
-            "sources": [{
-                "label": "S1",
-                "document_slug": "guide",
-                "section_slug": "setup",
-                "title": "Setup",
-            }],
+            "sources": [
+                {
+                    "label": "S1",
+                    "document_slug": "guide",
+                    "section_slug": "setup",
+                    "title": "Setup",
+                }
+            ],
         }
 
     monkeypatch.setattr(api.rag_graph, "invoke", fake_invoke)

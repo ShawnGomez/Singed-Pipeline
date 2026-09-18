@@ -3,36 +3,39 @@ from singed_pipeline.indexing import get_vector_store
 from collections import OrderedDict
 
 from singed_pipeline.models import RetrievedDocument
-MIN_RELEVANCE = 0.55
+import os
+
+MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.0"))
 
 llm = ChatOpenAI(
     model="gpt-4.1-mini",
     temperature=0,
+    timeout=30,
+    max_retries=3,
 )
 
 
-def retrieve_documents(question: str, document_slug: str | None = None ) -> list[RetrievedDocument]:
-    metadata_filter = None 
+def retrieve_documents(
+    question: str, document_slug: str | None = None
+) -> list[RetrievedDocument]:
+    metadata_filter = None
 
     if document_slug is not None:
-        metadata_filter = {
-            "document_slug":document_slug
-        }
+        metadata_filter = {"document_slug": document_slug}
 
     results = get_vector_store().similarity_search_with_relevance_scores(
-        query=question,
-        k=8,
-        filter = metadata_filter
+        query=question, k=8, filter=metadata_filter
     )
 
     return [
-        RetrievedDocument(document = document, relevance = relevance)
+        RetrievedDocument(document=document, relevance=relevance)
         for document, relevance in results
         if relevance >= MIN_RELEVANCE
     ]
 
+
 def answer_question(question: str, document_slug: str | None = None) -> dict:
-    retrieved = retrieve_documents(question = question, document_slug = document_slug)
+    retrieved = retrieve_documents(question=question, document_slug=document_slug)
 
     if not retrieved:
         return {
@@ -64,7 +67,7 @@ def answer_question(question: str, document_slug: str | None = None) -> dict:
     context_blocks: list[str] = []
     sources: list[dict] = []
 
-    for index, group in enumerate(groups.values(), start = 1):
+    for index, group in enumerate(groups.values(), start=1):
         label = f"S{index}"
         body = "\n\n".join(group["contents"])
 
@@ -76,15 +79,17 @@ def answer_question(question: str, document_slug: str | None = None) -> dict:
             f"{body}"
         )
 
-        sources.append({
-            "label": label,
-            "document_slug": group["document_slug"],
-            "section_slug": group["section_slug"],
-            "title": group["section_title"],
-        })
+        sources.append(
+            {
+                "label": label,
+                "document_slug": group["document_slug"],
+                "section_slug": group["section_slug"],
+                "title": group["section_title"],
+            }
+        )
 
     context = "\n\n---\n\n".join(context_blocks)
-   
+
     prompt = f"""You are a technical guide for the project. Explain the documentation clearly.
 
 - Cite every project-specific fact with its source label, e.g. [S1]. Never invent features not in the sources.
@@ -107,4 +112,3 @@ Answer:"""
         "answer": response.content,
         "sources": sources,
     }
-
