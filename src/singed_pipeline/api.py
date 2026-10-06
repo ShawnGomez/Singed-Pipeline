@@ -35,24 +35,22 @@ def query(request: QueryRequest) -> QueryResponse:
                 "document_slug": request.document_slug,
                 "search_query": request.message,
                 "attempts": 0,
-            })
+            }
+        )
+        if result.get("answer") is None:
+            raise RuntimeError("RAG graph returned no answer")
+        return QueryResponse.model_validate(result)
     except Exception as error:
         logger.error(
             "RAG request failed request_id =%s error_type = %s",
             request_id,
-            type(error).__name__
+            type(error).__name__,
         )
 
         raise HTTPException(
-                status_code = 503,
-                detail = {
-                    "message": "The assitant is temporarily unavailable.",
+                status_code=503,
+                detail={
+                    "message": "The assistant is temporarily unavailable.",
                     "request_id": request_id,
-                    }
-                ) from error
-
-    answer = result.get("answer")
-    if answer is None:
-        raise RuntimeError("The RAG graph finished without producing an answer.")
-
-    return QueryResponse.model_validate(result)
+                },
+        ) from None

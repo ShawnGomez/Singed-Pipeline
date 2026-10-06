@@ -59,13 +59,14 @@ def make_chunk_id(section_id: str, chunk_index: int) -> str:
     return f"{section_id}:{chunk_index}"
 
 
-def clear_section(section_id: str) -> int:
+def remove_stale_chunks(section_id: str, current_ids: list[str]) -> int:
     query = """
         DELETE FROM langchain_pg_embedding AS embedding
         USING langchain_pg_collection AS collection
         WHERE embedding.collection_id = collection.uuid
           AND collection.name = %s
           AND embedding.cmetadata->>'section_id' = %s
+          AND NOT (embedding.id = ANY(%s::text[]))
     """
 
     with psycopg.connect(POSTGRES_URL) as connection:
@@ -75,6 +76,7 @@ def clear_section(section_id: str) -> int:
                 (
                     COLLECTION_NAME,
                     section_id,
+                    current_ids,
                 ),
             )
 
@@ -86,21 +88,12 @@ def clear_section(section_id: str) -> int:
 def index_section(section_id: str) -> None:
     section = load_section(section_id)
     chunks = create_chunks(section)
-    
-    if not chunks:
-        raise ValueError(
-                    f"Section{section_id} produced no chunks"
-            )
-
     chunk_ids = [make_chunk_id(section["id"], index) for index in range(len(chunks))]
 
-    deleted_count = clear_section(section["id"])
+    if chunks:
+        get_vector_store().add_documents(documents=chunks, ids=chunk_ids)
 
-    get_vector_store().add_documents(
-        documents=chunks,
-        ids=chunk_ids,
-    )
-
+    deleted_count = remove_stale_chunks(section["id"], chunk_ids)
     print(
         f"Deleted {deleted_count} old chunks and indexed"
         f"{len(chunks)} chunks"

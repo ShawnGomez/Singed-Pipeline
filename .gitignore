@@ -16,3 +16,6 @@ wheels/
 
 #Something something Lint
 .ruff_cache/
+
+# Tests are kept locally and excluded from deployment artifacts.
+tests/

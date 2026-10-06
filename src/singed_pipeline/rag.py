@@ -5,7 +5,7 @@ from collections import OrderedDict
 from singed_pipeline.models import RetrievedDocument
 import os
 
-MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.0"))
+MIN_RELEVANCE = float(os.getenv("RAG_MIN_RELEVANCE", "0.55"))
 
 llm = ChatOpenAI(
     model="gpt-4.1-mini",

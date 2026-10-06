@@ -11,6 +11,10 @@ MAX_RETRIEVAL_ATTEMPTS = 2
 
 
 def retrieve_node(state: AgentState) -> dict:
+    attempts = state.get("attempts", 0)
+    if attempts >= MAX_RETRIEVAL_ATTEMPTS:
+        return {"retrieved": [], "attempts": attempts}
+
     search_query = state.get("search_query") or state["question"]
 
     documents = retrieve_documents(
@@ -20,7 +24,7 @@ def retrieve_node(state: AgentState) -> dict:
 
     return {
         "retrieved": documents,
-        "attempts": state.get("attempts", 0) + 1,
+        "attempts": attempts + 1,
     }
 
 
